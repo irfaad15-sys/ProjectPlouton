@@ -829,7 +829,7 @@ class DuckDBStore:
         query = f"SELECT {col_sql} FROM trades"
         params = []
         if status:
-            query += " WHERE status = ?"
+            query += " WHERE UPPER(status) = UPPER(?)"
             params.append(status)
         query += f" ORDER BY timestamp {'DESC' if sort_desc else 'ASC'}"
         query += f" LIMIT {limit}"
