@@ -48,3 +48,6 @@ dist/
 *.duckdb.wal
 pocketbase/pb_data/
 .claude/
+
+# backtest data cache (regenerable pickles)
+backtest/_cache/
