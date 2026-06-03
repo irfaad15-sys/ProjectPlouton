@@ -46,7 +46,8 @@ def test_fetch_multi_timeframe_calls_each_tf():
         f = HyperliquidFetcher()
         out = f.fetch_multi_timeframe("SOL")
 
-    assert set(out.keys()) == {"5m", "15m", "1h"}
+    # Execution=4h, confirmation=1h, macro=1d (migrated from the old 5m/15m/1h set).
+    assert set(out.keys()) == {"1d", "4h", "1h"}
     assert fake_exchange.fetch_ohlcv.call_count == 3
 
 

@@ -76,9 +76,16 @@ class TradingBot:
         saved_state = self._duckdb_store.get_bot_state() or {}
         saved_balance = float(saved_state.get("balance") or 0) or settings.paper_balance
 
+        # Live trading is not implemented — refuse loudly rather than silently
+        # paper-trading while the user believes real orders are being placed.
+        if str(getattr(settings, "trading_mode", "paper")).lower() == "live":
+            raise NotImplementedError(
+                "TRADING_MODE=live is not supported: live Hyperliquid execution is "
+                "not implemented (see backend/broker/live_broker.py). Use TRADING_MODE=paper."
+            )
+
         self._broker = PaperBroker(initial_balance=saved_balance)
         await self._broker.connect()
-
         open_trades = self._duckdb_store.list_open_trades()
         self._broker.rehydrate(open_trades)
         if open_trades:

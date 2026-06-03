@@ -17,6 +17,8 @@ class FakeSignal:
     swing_low: float = 90.0
     atr: float = 1.5
     fib_level_triggered: float = 0.5
+    rsi: float = 38.0
+    fib_zone_name: str = "GP"
 
 
 def _df_with_volume(volume_pattern):
@@ -27,10 +29,21 @@ def _df_with_volume(volume_pattern):
     }, index=idx)
 
 
+def _df_bullish_engulfing_with_spike():
+    """19 quiet candles then a strong bullish engulfing on a volume spike."""
+    rows = [(100, 100.2, 99.8, 100, 1000.0) for _ in range(19)]
+    rows.append((99.5, 103.0, 99.4, 102.5, 2200.0))
+    idx = pd.date_range("2026-01-01", periods=len(rows), freq="5min", tz="UTC")
+    return pd.DataFrame(rows, columns=["Open", "High", "Low", "Close", "Volume"], index=idx)
+
+
 def test_full_alignment_high_score():
     scorer = ConfidenceScorer()
-    df = _df_with_volume([1000.0] * 19 + [2000.0])
-    mtf = {"1h": {"trend": "UP", "slope": 0.012}, "15m": {"trend": "UP"}, "5m": {"trend": "UP"}}
+    df = _df_bullish_engulfing_with_spike()
+    mtf = {
+        "1d": {"trend": "UP", "slope": 0.012}, "4h": {"trend": "UP"},
+        "1h": {"trend": "UP", "slope": 0.012}, "15m": {"trend": "UP"}, "5m": {"trend": "UP"},
+    }
     score = scorer.score(signal=FakeSignal(), df=df, mtf_trend=mtf)
     assert score >= 70.0
 

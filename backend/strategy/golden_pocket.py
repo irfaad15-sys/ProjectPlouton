@@ -86,7 +86,15 @@ class GoldenPocketStrategy:
                 pivot_lows.append((closes.index[i], center))
 
         if not pivot_highs or not pivot_lows:
-            return None
+            # Fallback: a clean impulse (monotonic leg) has no INTERIOR pivot on one
+            # side — the defining extreme sits at the window edge. Use the window
+            # extreme so a valid swing is still produced instead of returning None.
+            if not pivot_highs:
+                hi_pos = int(closes.values.argmax())
+                pivot_highs = [(closes.index[hi_pos], float(closes.iloc[hi_pos]))]
+            if not pivot_lows:
+                lo_pos = int(closes.values.argmin())
+                pivot_lows = [(closes.index[lo_pos], float(closes.iloc[lo_pos]))]
 
         last_high_ts, last_high = pivot_highs[-1]
         last_low_ts, last_low = pivot_lows[-1]
@@ -96,6 +104,19 @@ class GoldenPocketStrategy:
                      direction=direction)
 
     # ── Fibonacci zones ───────────────────────────────────────────────────────
+
+    def golden_pocket_zone(self, swing_low: float, swing_high: float, direction: str) -> FibZone:
+        """Public helper: the 50%–61.8% Golden Pocket for a given swing.
+
+        UP   (long retracement): upper = high - 0.500*range, lower = high - 0.618*range
+        DOWN (short retracement): upper = low + 0.618*range, lower = low + 0.500*range
+        """
+        rng = swing_high - swing_low
+        if direction == "UP":
+            return FibZone(upper=swing_high - 0.500 * rng,
+                           lower=swing_high - 0.618 * rng, name="GP")
+        return FibZone(upper=swing_low + 0.618 * rng,
+                       lower=swing_low + 0.500 * rng, name="GP")
 
     def _zones(self, swing: Swing) -> list[FibZone]:
         """

@@ -36,3 +36,13 @@ def test_zero_stop_distance_raises():
     sizer = PositionSizer(risk_per_trade_pct=0.03)
     with pytest.raises(ValueError):
         sizer.size(balance=500.0, entry=100.0, stop_loss=100.0, direction="LONG", max_leverage_for_coin=20)
+
+
+def test_leverage_capped_so_liquidation_is_beyond_stop():
+    """The sizer must auto-cap leverage so the stop is always reached before
+    liquidation, even when the coin allows very high leverage."""
+    sizer = PositionSizer(risk_per_trade_pct=0.03)
+    info = sizer.size(balance=500.0, entry=100.0, stop_loss=95.0, direction="LONG", max_leverage_for_coin=50)
+    assert info.liquidation_price < info.stop_loss, "liquidation must sit beyond the stop for a LONG"
+    info_s = sizer.size(balance=500.0, entry=100.0, stop_loss=105.0, direction="SHORT", max_leverage_for_coin=50)
+    assert info_s.liquidation_price > info_s.stop_loss, "liquidation must sit beyond the stop for a SHORT"

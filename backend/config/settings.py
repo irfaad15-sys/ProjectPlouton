@@ -20,10 +20,35 @@ class Settings(BaseSettings):
         return v
 
     # Paper trading
+    # NOTE ON UNITS: risk_per_trade_pct and daily_loss_limit_pct are FRACTIONS,
+    # not percentages. 0.01 = 1%, 0.15 = 15%. The Settings-UI / DB path stores
+    # these as percentages (1.0 = 1%) and converts; the validators below reject
+    # values that look like a percent typed into a fraction field (e.g. "1"),
+    # which previously could size a single trade at 100% of the account.
     paper_balance: float = 500.0
     risk_per_trade_pct: float = 0.01
-    max_open_trades: int = 6
+    max_open_trades: int = 3
     daily_loss_limit_pct: float = 0.15
+
+    @field_validator("risk_per_trade_pct")
+    @classmethod
+    def _validate_risk(cls, v: float) -> float:
+        if not 0 < v <= 0.1:
+            raise ValueError(
+                f"risk_per_trade_pct={v} is out of the sane range. "
+                "Use a FRACTION: 0.01 = 1%. Max allowed is 0.1 (10%)."
+            )
+        return v
+
+    @field_validator("daily_loss_limit_pct")
+    @classmethod
+    def _validate_daily_loss(cls, v: float) -> float:
+        if not 0 < v <= 1.0:
+            raise ValueError(
+                f"daily_loss_limit_pct={v} is out of range. "
+                "Use a FRACTION: 0.15 = 15%. Max allowed is 1.0 (100%)."
+            )
+        return v
 
     # Strategy selection: "golden_pocket" | "smc"
     strategy_name: str = "golden_pocket"

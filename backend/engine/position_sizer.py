@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 
 MAINTENANCE_MARGIN_PCT = 0.0125  # Hyperliquid default ~1.25%
+LIQ_BUFFER = 1.05                # require liquidation ≥ 1.05× the stop distance away
 
 
 @dataclass
@@ -46,10 +47,16 @@ class PositionSizer:
         notional = quantity * entry
 
         # Target leverage keeps initial_margin ≈ risk_amount (not full notional).
-        # ceil(notional/balance) gave 1x when notional < balance, forcing margin = notional
-        # and burning most of the account on a single trade.
         raw_leverage = max(1, math.ceil(notional / risk_amount))
-        suggested_leverage = min(raw_leverage, max_leverage_for_coin)
+
+        # SAFETY CAP: choose the highest leverage that still keeps the liquidation
+        # price BEYOND the stop loss (with a buffer), so the stop is always reached
+        # before liquidation. Liquidation distance from entry is
+        #   entry * (1/lev - maintenance_pct);  require >= LIQ_BUFFER * stop_distance.
+        stop_dist_frac = stop_distance / entry
+        denom = MAINTENANCE_MARGIN_PCT + LIQ_BUFFER * stop_dist_frac
+        safe_max_leverage = max(1, math.floor(1.0 / denom)) if denom > 0 else raw_leverage
+        suggested_leverage = max(1, min(raw_leverage, max_leverage_for_coin, safe_max_leverage))
 
         initial_margin = notional / suggested_leverage
         maintenance_margin = notional * MAINTENANCE_MARGIN_PCT
@@ -61,6 +68,19 @@ class PositionSizer:
             liquidation_price = entry - loss_per_unit
         else:
             liquidation_price = entry + loss_per_unit
+
+        # DEFENSIVE: after the safety cap this should not trigger for normal stops,
+        # but guard against degenerate inputs (huge stop distance) by refusing to
+        # return a position that would liquidate before its stop.
+        liq_before_stop = (
+            (direction == "LONG" and liquidation_price >= stop_loss) or
+            (direction == "SHORT" and liquidation_price <= stop_loss)
+        )
+        if liq_before_stop:
+            raise ValueError(
+                f"Unsafe sizing: liquidation {liquidation_price:.4f} would trigger before "
+                f"stop {stop_loss:.4f} even at minimum leverage. Stop is too wide for this risk."
+            )
 
         return PositionInfo(
             quantity=quantity,

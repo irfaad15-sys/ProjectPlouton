@@ -41,7 +41,7 @@ def test_tp1_partial_writes_entry_price_as_new_stop_loss():
     store.get_trade.return_value = {"id": trade_id, "entry_price": entry_price}
     store.list_all_trades.return_value = []
     fetcher.fetch_ohlcv.return_value = _price_df(49.0)
-    broker.check_exits.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 3.5)]
+    broker.check_exits_candle.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 3.5)]
 
     asyncio.run(om.check_open_trades())
 
@@ -64,7 +64,7 @@ def test_tp1_partial_does_not_write_tp1_price_as_stop_loss():
     store.get_trade.return_value = {"id": trade_id, "entry_price": entry_price}
     store.list_all_trades.return_value = []
     fetcher.fetch_ohlcv.return_value = _price_df(103.0)
-    broker.check_exits.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 12.5)]
+    broker.check_exits_candle.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 12.5)]
 
     asyncio.run(om.check_open_trades())
 
@@ -88,7 +88,7 @@ def test_tp1_partial_halves_initial_margin_when_present():
     }
     store.list_all_trades.return_value = []
     fetcher.fetch_ohlcv.return_value = _price_df(111.0)
-    broker.check_exits.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 5.0)]
+    broker.check_exits_candle.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 5.0)]
 
     asyncio.run(om.check_open_trades())
 
@@ -114,7 +114,7 @@ def test_tp1_partial_halves_initial_margin_in_db():
     }
     store.list_all_trades.return_value = []
     fetcher.fetch_ohlcv.return_value = _price_df(111.0)
-    broker.check_exits.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 5.0)]
+    broker.check_exits_candle.return_value = [(trade_id, "TP1_PARTIAL", tp1_price, 5.0)]
 
     asyncio.run(om.check_open_trades())
 

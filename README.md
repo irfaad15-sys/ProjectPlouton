@@ -1,6 +1,6 @@
-# 🤖 Plouton — Production-Ready Crypto Perpetuals Trading Bot
+# 🤖 Plouton — Crypto Perpetuals Trading Bot (paper trading)
 
-**Hermes V2** — An automated trading bot for **Hyperliquid crypto perpetuals** with real-time execution, advanced risk management, multi-strategy support, and a real-time monitoring dashboard.
+**Hermes V2** — An automated **paper-trading** bot for **Hyperliquid crypto perpetuals** with a multi-coin scanner, risk-based position sizing, a cost-aware paper broker, and a monitoring dashboard. **Live execution is NOT implemented** — `TRADING_MODE=live` intentionally refuses to start. Validate any strategy on paper (with a real edge) before considering live trading.
 
 Project architecture, conventions, and current phase tracking are documented in `CLAUDE.md` (source of truth for AI and docs alignment).
 
@@ -45,11 +45,11 @@ Dashboard available at `http://localhost:5174`
 ## Configuration
 
 Copy `.env.example` to `.env` and adjust:
-- `HYPERLIQUID_API_KEY` — API key for live trading (optional; paper trading works without)
+- `HYPERLIQUID_API_KEY` — reserved for future live trading (unused; paper trading needs no key)
 - `COINS` — comma-separated list of Hyperliquid perp symbols (default: `BTC,ETH,SOL,XRP,BNB,SUI,TAO,LINK,HYPE,ADA`)
 - `TIMEFRAME` — candle interval in minutes (default: `5`)
 - `PAPER_BALANCE` — starting paper balance in USD (default: `500`)
-- `TRADING_MODE` — `paper` for backtesting, `live` for real trading
+- `TRADING_MODE` — `paper` only (live is not implemented and will refuse to start)
 - `STRATEGY` — active strategy name (default: `golden_pocket`) — options: `fibonacci`, `atr`, `golden_pocket`
 
 Strategy parameters are tunable in the Settings page or via API.
@@ -76,7 +76,7 @@ ProjectHermes/
 │   │   ├── fibonacci.py       # Fibonacci Retracement
 │   │   ├── atr.py             # ATR Volatility
 │   │   ├── golden_pocket.py   # Golden Pocket
-│   │   └── indicators.py      # TA-Lib indicators
+│   │   └── indicators.py      # VWAP / swings / Fib (pure pandas/numpy)
 │   ├── engine/
 │   │   ├── signal_generator.py    # Multi-timeframe signals
 │   │   ├── confidence_scorer.py   # Signal quality scoring

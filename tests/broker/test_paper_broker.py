@@ -79,7 +79,7 @@ def test_rehydrated_tp1_hit_position_does_not_fire_second_tp1():
 
 def test_rehydrated_position_exits_at_stop_loss():
     """After rehydration, check_exits must close a position that hits SL."""
-    broker = PaperBroker(initial_balance=200.0)
+    broker = PaperBroker(initial_balance=200.0, taker_fee=0.0, slippage_bps=0.0, apply_funding=False)
     broker.rehydrate([
         {
             "id": "t1", "instrument": "BTC", "direction": "LONG",
@@ -125,7 +125,7 @@ def test_close_position_returns_margin_plus_pnl():
 
 
 def test_tp1_partial_returns_half_margin():
-    broker = PaperBroker(initial_balance=200.0)
+    broker = PaperBroker(initial_balance=200.0, taker_fee=0.0, slippage_bps=0.0, apply_funding=False)
     asyncio.run(broker.connect())
     broker.open_position(
         coin="BTC", direction="LONG", entry=100.0, quantity=2.0,
@@ -146,9 +146,10 @@ def test_tp1_partial_returns_half_margin():
     assert broker.balance == pytest.approx(100.0 + (110.0 - 100.0) * 1.0)
 
 
-def test_rehydrate_deducts_margin_for_restored_positions():
-    """Rehydrated positions represent committed capital; balance must reflect reserved margin."""
-    broker = PaperBroker(initial_balance=200.0)
+def test_rehydrate_does_not_rededuct_margin():
+    """The DB-saved balance already reflects reserved margin from the prior session.
+    Rehydration must NOT deduct it again (that was a double-counting bug)."""
+    broker = PaperBroker(initial_balance=103.55)  # balance saved AFTER margin was deducted
     broker.rehydrate([
         {
             "id": "t1", "instrument": "HYPE", "direction": "LONG",
@@ -158,4 +159,36 @@ def test_rehydrate_deducts_margin_for_restored_positions():
             "initial_margin": 96.45, "liquidation_price": 32.0, "funding_rate_hr": 0.0,
         }
     ])
-    assert broker.balance == pytest.approx(200.0 - 96.45)
+    assert broker.balance == pytest.approx(103.55)
+
+
+def test_costs_reduce_pnl_on_close():
+    """With fees on, realized PnL is strictly less than the cost-free gross."""
+    free = PaperBroker(initial_balance=1000.0, taker_fee=0.0, slippage_bps=0.0, apply_funding=False)
+    paid = PaperBroker(initial_balance=1000.0, taker_fee=0.001, slippage_bps=5.0, apply_funding=False)
+    for b in (free, paid):
+        b.rehydrate([{
+            "id": "t1", "instrument": "BTC", "direction": "LONG",
+            "entry_price": 100.0, "quantity": 1.0, "stop_loss": 90.0,
+            "tp1_price": 200.0, "tp2_price": 120.0, "take_profit": 120.0,
+            "tp1_hit": True, "notional": 100.0, "leverage": 1,
+            "initial_margin": 50.0, "liquidation_price": 80.0, "funding_rate_hr": 0.0,
+        }])
+    free_pnl = free.check_exits("BTC", current_price=121.0)[0][3]
+    paid_pnl = paid.check_exits("BTC", current_price=121.0)[0][3]
+    assert paid_pnl < free_pnl, "fees + slippage must reduce realized PnL"
+
+
+def test_liquidation_closes_before_stop():
+    """A LONG must close at LIQUIDATION when price reaches the liq level."""
+    broker = PaperBroker(initial_balance=200.0, taker_fee=0.0, slippage_bps=0.0, apply_funding=False)
+    broker.rehydrate([{
+        "id": "t1", "instrument": "BTC", "direction": "LONG",
+        "entry_price": 100.0, "quantity": 1.0, "stop_loss": 70.0,
+        "tp1_price": 110.0, "tp2_price": 120.0, "take_profit": 120.0,
+        "tp1_hit": False, "notional": 100.0, "leverage": 5,
+        "initial_margin": 20.0, "liquidation_price": 82.0, "funding_rate_hr": 0.0,
+    }])
+    closures = broker.check_exits("BTC", current_price=81.0)  # below liq (82) but above SL (70)
+    assert len(closures) == 1
+    assert closures[0][1] == "LIQUIDATION"

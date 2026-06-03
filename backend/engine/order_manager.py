@@ -68,9 +68,14 @@ class OrderManager:
             except Exception as e:
                 logger.warning(f"check_open_trades fetch failed for {coin}: {e}")
                 continue
-            current_price = float(df["Close"].iloc[-1])
 
-            closures = self.broker.check_exits(coin, current_price)
+            # OHLC-aware: use the candle high/low (not just close) so an intrabar
+            # wick through SL / TP / liquidation is caught rather than missed
+            # between polls. Reuses the same conservative path as backfill replay.
+            last = df.iloc[-1]
+            closures = self.broker.check_exits_candle(
+                coin, high=float(last["High"]), low=float(last["Low"])
+            )
             for trade_id, reason, exit_price, pnl in closures:
                 trade = self.store.get_trade(trade_id)
 
