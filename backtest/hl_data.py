@@ -8,7 +8,7 @@ URL = "https://api.hyperliquid.xyz/info"
 CACHE = os.path.join(os.path.dirname(__file__), "_cache")
 os.makedirs(CACHE, exist_ok=True)
 
-_MS = {"1h": 3600_000, "4h": 4*3600_000, "1d": 24*3600_000}
+_MS = {"5m": 300_000, "15m": 900_000, "1h": 3600_000, "4h": 4*3600_000, "1d": 24*3600_000}
 
 def _raw(coin, interval, start_ms, end_ms):
     body = json.dumps({"type": "candleSnapshot",

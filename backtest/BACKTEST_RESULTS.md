@@ -49,6 +49,28 @@ finding 1 winner is partly expected by chance (multiple-comparison trap).
 The profit is concentrated in SOL's early-2024 trend and decays. **Regime artifact,
 not a durable edge.**
 
+## 5. Confirmed Golden Pocket (0.382-reclaim) — a hand-traded rule
+Tested from a real, winning HYPE/USDC long: retrace into the 0.5-0.618 pocket
+(holding above 0.786), then **wait for a confirmed 0.382 reclaim with momentum**
+before entering; TP1 = swing extreme, TP2 = -0.272 extension; SL past 0.786.
+See `confirmed_gp.py`.
+
+| TF | coins | trades | win% | PF | return |
+|----|-------|------:|-----:|----:|-------:|
+| 4h (2.3y) | BTC | 20 | 60.0 | 0.95 | -0.4% |
+| 4h (2.3y) | ETH | 24 | 58.3 | 0.77 | -2.4% |
+| 4h (2.3y) | SOL | 29 | 51.7 | 0.84 | -2.3% |
+| 5m (~18d) | BTC/ETH/SOL/HYPE/XRP/LINK | 105 | 40-68 | 0.18-0.87 | -1% to -8% |
+
+The confirmation filter **does raise win rate** (52-60% on 4h vs 39-45% baseline) —
+a real improvement — but expectancy stays negative: the -0.272 target is far, so the
+few losers outweigh the many small winners. On 5m it's much worse (fees + noise
+dominate, PF 0.18-0.87, every coin negative). A high win rate with PF < 1 is the
+classic "feels good, bleeds money" trap. One good discretionary trade != a system.
+
+Note: Hyperliquid's public candle API only serves ~18 days of 5m history (~5000
+candles), so 5m strategies can't be validated robustly from this data source.
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
