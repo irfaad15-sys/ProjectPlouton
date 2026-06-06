@@ -71,6 +71,30 @@ classic "feels good, bleeds money" trap. One good discretionary trade != a syste
 Note: Hyperliquid's public candle API only serves ~18 days of 5m history (~5000
 candles), so 5m strategies can't be validated robustly from this data source.
 
+## 6. Wider take-profit (+10% target) — helps, but still not validated
+Capping winners at 2R left money on the table. A fixed **+10% TP2** (TP1 at +5%)
+improved every coin in-sample (PF: BTC 0.79->0.97, ETH 0.94->1.20, SOL 1.28->1.32).
+See `fixed_target.py`. Out-of-sample check (70/30 split, GoldenPocket entries):
+
+| coin | in-sample PF / return | OOS PF / return |
+|------|----------------------:|----------------:|
+| BTC | 0.94 / -1.8% | 1.04 / +0.5% |
+| ETH | 0.74 / -7.1% | **3.23 / +15.1%** |
+| SOL | 1.33 / +9.1% | 1.30 / +3.8% |
+| avg | PF 1.01, 1/3 profitable | PF 1.86, 3/3 profitable |
+
+OOS looks *better* than in-sample — which is a **red flag, not a green one**:
+- OOS samples are tiny (16-20 trades); ETH alone drives the average (PF 0.74 ->
+  3.23 on 16 trades — a few big winners, not a stable edge).
+- The holdout window (late-2025..2026) was a strong **trending** regime that
+  flatters a run-the-winner target. SOL is the only *consistent* coin (1.33 ->
+  1.30); BTC is flat both ways.
+
+Letting winners run is a genuine **structural improvement** (don't cap trends at
+2R), but it amplifies a favorable regime rather than predicting one — not a durable
+edge. It also does NOT deliver "+10% per trade": win rate is 33-62%, so most trades
+make far less or lose. Don't trade it live on this basis.
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
