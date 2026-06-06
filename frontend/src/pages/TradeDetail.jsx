@@ -229,6 +229,23 @@ export default function TradeDetail() {
         </div>
       </div>
 
+      {/* ── Trade Explanation ── */}
+      {trade.explanation && (
+        <Card>
+          <CardHeader>
+            <CardTitle icon={BarChart3} iconColor="#a78bfa">What happened in this trade</CardTitle>
+          </CardHeader>
+          <CardContent style={{ padding: '4px 24px 20px' }}>
+            {trade.explanation.split('\n').map((line, i) => (
+              <p key={i} style={{
+                fontSize: 13.5, lineHeight: 1.6, color: '#cbd5e1',
+                margin: '0 0 8px', whiteSpace: 'pre-wrap',
+              }}>{line}</p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Price Levels Card ── */}
       <Card>
         <CardContent style={{ padding: '20px 24px' }}>

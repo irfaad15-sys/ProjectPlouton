@@ -148,6 +148,153 @@ def _parse_iso_ts(value) -> datetime | None:
     return None
 
 
+def _isnum(v) -> bool:
+    """True only for a real, finite number (rejects None and NaN)."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return False
+    return v == v and v not in (float("inf"), float("-inf"))
+
+
+def _fmt_px(v) -> str:
+    """Human price formatting that adapts to the coin's scale."""
+    if v is None:
+        return "?"
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "?"
+    if v >= 100:
+        return f"${v:,.2f}"
+    if v >= 1:
+        return f"${v:.4f}"
+    return f"${v:.5f}"
+
+
+def _trade_explanation(t: dict) -> str:
+    """Plain-language story of a trade, built from its stored fields:
+    when/why it opened, the size, the risk plan, and how/when it exited."""
+    g = t.get
+    coin = g("instrument", "?")
+    direction = (g("direction") or "").upper()
+    entry = g("entry_price")
+    open_ts = _parse_iso_ts(g("timestamp"))
+    open_str = open_ts.strftime("%Y-%m-%d %H:%M UTC") if open_ts else "an unknown time"
+
+    def pct_from_entry(p):
+        if not entry or p is None:
+            return ""
+        try:
+            return f" ({(float(p) / float(entry) - 1) * 100:+.1f}%)"
+        except (TypeError, ValueError, ZeroDivisionError):
+            return ""
+
+    lines = []
+
+    # 1. Headline — what, which way, when, at what price
+    arrow = "📈" if direction == "LONG" else "📉"
+    side = "LONG (bought)" if direction == "LONG" else "SHORT (sold)"
+    lines.append(f"{arrow} {side} {coin} — opened {open_str} at {_fmt_px(entry)}.")
+
+    # 2. Why it entered — the fib/golden-zone setup
+    sh, sl_sw = g("swing_high"), g("swing_low")
+    zlo, zhi = g("fib_zone_lower"), g("fib_zone_upper")
+    fib = g("fib_level_triggered")
+    why = []
+    if _isnum(sh) and _isnum(sl_sw):
+        lo, hi = (_fmt_px(sl_sw), _fmt_px(sh)) if direction == "LONG" else (_fmt_px(sh), _fmt_px(sl_sw))
+        why.append(f"price retraced into the Fibonacci golden zone of the swing {lo} → {hi}")
+    if _isnum(zlo) and _isnum(zhi):
+        why.append(f"entry zone {_fmt_px(zlo)}–{_fmt_px(zhi)}")
+    if fib:
+        try:
+            why.append(f"triggered at the {float(fib) * 100:.1f}% level")
+        except (TypeError, ValueError):
+            pass
+    conf = g("confidence")
+    conf_str = ""
+    if conf is not None:
+        try:
+            conf_str = f" Confidence score {float(conf):.0f}%."
+        except (TypeError, ValueError):
+            pass
+    lines.append("Why: " + ("; ".join(why) if why else "a valid setup formed") + f".{conf_str}")
+
+    # 3. Size of the position
+    qty, notional, lev, margin = g("quantity"), g("notional"), g("leverage"), g("initial_margin")
+    bits = []
+    if qty is not None:
+        bits.append(f"{float(qty):.4f} {coin}")
+    if notional is not None:
+        bits.append(f"~${float(notional):,.2f} position")
+    if lev is not None:
+        bits.append(f"{float(lev):.0f}x leverage")
+    if margin is not None:
+        bits.append(f"${float(margin):.2f} margin at risk")
+    if bits:
+        lines.append("Size: " + ", ".join(bits) + ".")
+
+    # 4. Risk plan — stop, targets, liquidation
+    slp, tp1, tp2, liq = g("stop_loss"), g("tp1_price"), g("tp2_price"), g("liquidation_price")
+    plan = []
+    if slp is not None:
+        plan.append(f"stop {_fmt_px(slp)}{pct_from_entry(slp)}")
+    if tp1 is not None:
+        plan.append(f"TP1 {_fmt_px(tp1)}{pct_from_entry(tp1)}")
+    if tp2 is not None:
+        plan.append(f"TP2 {_fmt_px(tp2)}{pct_from_entry(tp2)}")
+    if liq is not None and float(liq or 0) > 0:
+        plan.append(f"liquidation {_fmt_px(liq)}")
+    if plan:
+        lines.append("Plan: " + ", ".join(plan) + ".")
+
+    # 5. Outcome — open status or how/when it closed
+    status = (g("status") or "").upper()
+    if status != "CLOSED":
+        if g("tp1_hit"):
+            lines.append("Status: OPEN — TP1 hit, partial profit booked, stop moved to breakeven on the rest.")
+        else:
+            lines.append("Status: OPEN — running, no target hit yet.")
+    else:
+        exit_ts = _parse_iso_ts(g("exit_timestamp"))
+        exit_price, reason, pnl = g("exit_price"), (g("exit_reason") or "").upper(), g("pnl")
+        be = (
+            g("tp1_hit") and ("SL" in reason or "STOP" in reason or "BREAKEVEN" in reason)
+            and slp is not None and entry is not None
+            and abs(float(slp) - float(entry)) / float(entry) < 0.001
+        )
+        if "TP2" in reason or "BACKTEST" in reason:
+            label = "hit TP2 — the full target"
+        elif "TP1" in reason:
+            label = "closed at TP1"
+        elif "LIQUID" in reason:
+            label = "was LIQUIDATED"
+        elif be or "BREAKEVEN" in reason:
+            label = "stopped at breakeven after banking TP1 (a risk-free trade)"
+        elif "SL" in reason or "STOP" in reason:
+            label = "hit the stop loss"
+        elif "MANUAL" in reason:
+            label = "was closed manually"
+        else:
+            label = f"closed ({reason or 'unknown reason'})"
+        when = f" on {exit_ts.strftime('%Y-%m-%d %H:%M UTC')}" if exit_ts else ""
+        hold = ""
+        if open_ts and exit_ts:
+            hrs = (exit_ts - open_ts).total_seconds() / 3600
+            hold = f", held {hrs:.1f}h" if hrs < 48 else f", held {hrs / 24:.1f} days"
+        pnl_str = ""
+        if pnl is not None:
+            pnl = float(pnl)
+            pnl_str = f" Result: {'+' if pnl >= 0 else ''}${pnl:.2f}."
+        lines.append(f"Exit: {label} at {_fmt_px(exit_price)}{when}{hold}.{pnl_str}")
+
+    note = t.get("analysis_notes")
+    if note:
+        lines.append(f"Notes: {note}")
+    return "\n".join(lines)
+
+
 class SettingsPatch(BaseModel):
     instrument: str | None = None
     balance: float | None = None
@@ -395,6 +542,8 @@ async def get_trades(
     trades = store.get_trades(limit=limit, status=status, sort_desc=sort_desc)
     if trade_type:
         trades = [t for t in trades if (t.get("trade_type") or "paper") == trade_type]
+    for tr in trades:
+        tr["explanation"] = _trade_explanation(tr)
     return _clean(trades)
 
 
@@ -452,6 +601,7 @@ async def get_trade(trade_id: str):
     has_initial, has_final = store.get_trade_chart_flags(trade_id)
     trade["chart_initial_png"] = has_initial
     trade["chart_final_png"] = has_final
+    trade["explanation"] = _trade_explanation(trade)
     return _clean(trade)
 
 
