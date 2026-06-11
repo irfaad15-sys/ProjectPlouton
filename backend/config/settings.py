@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # Strategy
     min_confidence_pct: float = 40.0
-    execution_tf_default: str = "4h"
+    execution_tf_default: str = "4h"   # 4h: moves clear fees; 5m bled (fees=84% of losses)
     confirmation_tf: str = "1h"
     trend_tf: str = "1d"
     atr_period: int = 14
