@@ -95,6 +95,31 @@ Letting winners run is a genuine **structural improvement** (don't cap trends at
 edge. It also does NOT deliver "+10% per trade": win rate is 33-62%, so most trades
 make far less or lose. Don't trade it live on this basis.
 
+## 7. Regime filter + cross-sectional momentum — both fail validation
+After the live 5m run bled (fees ~84% of losses), two new directions were tested.
+
+**Regime filter** (`regime_filter.py`) — strong-trend gate + cost gate on the
+GoldenPocket entries. Made every coin *worse*, not better:
+| coin | baseline PF | filtered PF | filtered OOS PF |
+|------|------------:|------------:|----------------:|
+| BTC | 0.81 | 0.61 | 0.76 |
+| ETH | 0.97 | 0.87 | 0.94 |
+| SOL | 1.28 | 1.18 | 1.00 |
+It cut winners along with losers — trend strength doesn't separate them. The
+premise ("losers cluster in chop") was false; the signal lacks edge in all regimes.
+
+**Cross-sectional momentum** (`xsmom.py`) — rank the 10 coins by trailing return,
+long top-2 / short bottom-2, rebalance weekly, costs on. Window 2024-12..2026-06
+(BTC buy&hold −34.8%). Long-short by lookback: **14d +72% (Sharpe 0.91)**, 30d
+−52%, 60d −53%. A finer grid showed a *contiguous positive cluster* at lookback
+10–14d / hold 3–7d (+50..+86%) — promising — but **walk-forward broke it**: no
+cluster config is positive in *both* halves (lb14/h7 was +3% then −15%, which
+can't reconcile with the full-period +72%). The headline was path-dependent on a
+handful of weeks, not a durable edge.
+
+Both major non-retracement families are now rejected. No simple-TA signal tested
+survives out-of-sample validation in this universe/window.
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
