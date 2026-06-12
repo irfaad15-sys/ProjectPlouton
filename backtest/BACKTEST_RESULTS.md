@@ -120,6 +120,25 @@ handful of weeks, not a durable edge.
 Both major non-retracement families are now rejected. No simple-TA signal tested
 survives out-of-sample validation in this universe/window.
 
+## 8. Volume-profile levels (POC/VAH/VAL) — fail the placebo test
+Claim (trading-video folklore): price "rejects with clean follow-through" at the
+prior session's Point of Control / value-area edges. Tested with
+`volume_profile_study.py`: 1,946 first-touch events over 530 coin-days (15m bars,
+2h bounce horizon), **with a placebo control** — random price levels drawn inside
+yesterday's range.
+
+| level | n | win% | gross | net (fees) | t |
+|-------|--:|-----:|------:|-----------:|--:|
+| POC | 358 | 49.4% | +0.06% | **−0.07%** | 1.2 |
+| VAH | 304 | 46.1% | −0.05% | −0.18% | −0.9 |
+| VAL | 333 | 49.8% | +0.04% | −0.09% | 0.6 |
+| **RND (placebo)** | 951 | **53.4%** | +0.05% | −0.08% | 1.5 |
+
+**Random lines "bounced" as well as the professional levels.** The small positive
+gross at every level (including placebo) is generic post-touch mean-reversion
+noise, and fees consume all of it. POC/VAH/VAL carry no information beyond being
+a price inside yesterday's range.
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
