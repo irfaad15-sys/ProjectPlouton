@@ -592,6 +592,27 @@ async def create_backtest_trade(payload: BacktestTradePayload):
     return {"ok": True, "id": trade_id}
 
 
+@app.get("/api/carry")
+async def get_carry():
+    """Funding-carry book: delta-neutral pairs + net yield so far."""
+    store = get_store()
+    try:
+        rows = store.list_carry_positions()
+    except Exception:
+        return {"positions": [], "note": "carry table not initialised yet"}
+    out = []
+    for r in rows:
+        net = float(r.get("funding_collected") or 0) - float(r.get("fees_paid") or 0)
+        opened = _parse_iso_ts(r.get("opened_at"))
+        hours = ((datetime.now(timezone.utc) - opened).total_seconds() / 3600) if opened else 0
+        notional = float(r.get("notional") or 0)
+        apr = (net / notional) * (8760 / hours) * 100 if notional and hours > 1 else None
+        r["net_yield_usd"] = net
+        r["realized_apr_pct"] = apr
+        out.append(r)
+    return _clean({"positions": out})
+
+
 @app.get("/api/trades/{trade_id}")
 async def get_trade(trade_id: str):
     store = get_store()

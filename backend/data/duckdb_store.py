@@ -1007,6 +1007,52 @@ class DuckDBStore:
         except Exception:
             return False
 
+    # ── Funding-carry positions (delta-neutral short-perp + long-spot pairs) ──
+
+    def ensure_carry_table(self) -> None:
+        with self._lock:
+            self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS carry_positions (
+                coin              VARCHAR PRIMARY KEY,
+                status            VARCHAR NOT NULL,    -- OPEN | CLOSED
+                notional          DOUBLE,              -- per-leg notional at entry ($)
+                qty               DOUBLE,              -- coin quantity per leg
+                entry_price       DOUBLE,
+                opened_at         TIMESTAMP,
+                closed_at         TIMESTAMP,
+                funding_collected DOUBLE DEFAULT 0.0,  -- cumulative $
+                fees_paid         DOUBLE DEFAULT 0.0,  -- cumulative $
+                last_accrual      TIMESTAMP,
+                last_funding_hr   DOUBLE,              -- latest hourly rate (fraction)
+                exit_reason       VARCHAR
+            )
+            """)
+
+    def get_carry_position(self, coin: str) -> dict | None:
+        with self._lock:
+            row = self.conn.execute(
+                "SELECT * FROM carry_positions WHERE coin = ?", [coin]
+            ).fetchdf()
+        return None if row.empty else row.iloc[0].to_dict()
+
+    def list_carry_positions(self) -> list[dict]:
+        with self._lock:
+            df = self.conn.execute(
+                "SELECT * FROM carry_positions ORDER BY coin"
+            ).fetchdf()
+        return df.to_dict("records") if not df.empty else []
+
+    def upsert_carry_position(self, row: dict) -> None:
+        cols = ["coin", "status", "notional", "qty", "entry_price", "opened_at",
+                "closed_at", "funding_collected", "fees_paid", "last_accrual",
+                "last_funding_hr", "exit_reason"]
+        vals = [row.get(c) for c in cols]
+        with self._lock:
+            self.conn.execute(
+                f"INSERT OR REPLACE INTO carry_positions ({', '.join(cols)}) "
+                f"VALUES ({', '.join('?' for _ in cols)})", vals
+            )
+
     def close(self) -> None:
         """Close the DuckDB connection."""
         if getattr(self, "_base_conn", None) is not None:

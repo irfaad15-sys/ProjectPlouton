@@ -110,6 +110,11 @@ class TradingBot:
         ]
         self._runner = AsyncRunner(scanners)
 
+        # Funding-carry harvester (paper) — delta-neutral pairs, separate book
+        # from the directional broker. The one backtest-validated strategy.
+        from backend.engine.carry_harvester import CarryHarvester
+        self._carry = CarryHarvester(fetcher=fetcher, store=self._duckdb_store)
+
         if open_trades:
             await self._order_mgr.backfill_missed_exits()
 
@@ -133,6 +138,11 @@ class TradingBot:
                 logger.info(f"--- cycle start {cycle_start.isoformat()} ---")
 
                 await self._order_mgr.check_open_trades()
+
+                try:
+                    await self._carry.tick()
+                except Exception as e:
+                    logger.warning(f"carry harvester tick failed: {e}")
 
                 trade_ids = await self._runner.run_one_cycle()
                 if trade_ids:
