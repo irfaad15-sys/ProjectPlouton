@@ -163,6 +163,26 @@ coins, stop-first walk-forward, placebo anchors at arbitrary UTC times):
 ~4 days of 1m history — but they only filter entries; the range break itself must
 carry the edge, and after costs it doesn't.)
 
+## 10. ORB with retrace entry (15m range, "optimized" 40%/0.8R) — still loses
+Stronger variant of section 9: 15m opening range (wider — fees relatively
+smaller), no chasing — limit entry 40% back INTO the range after the break, stop
+at the opposite extreme. Tested with `orb_retrace_study.py` (~53 days x 10
+coins, n=301 real-anchor events, placebo anchors):
+
+| anchor | 0.8R target (needs 56% win) | 2R target (needs 33% win) |
+|--------|----------------------------:|--------------------------:|
+| REAL 13:30 UTC | 46.2% win, **−0.18%/trade** | 30.2% win, **−0.14%/trade** |
+| placebo 02:30 | 36.1%, −0.20% | 22.9%, −0.19% |
+| placebo 06:30 | 40.4%, −0.20% | 27.0%, −0.21% |
+
+- The video's in-sample-optimized parameters (40% retrace, 0.8R) are the WORST
+  config tested — textbook curve-fit (narrator literally says "I already
+  optimized the strategy" before the equity curve).
+- **Session-effect lead strengthens (3rd independent confirmation):** the
+  US-open anchor beats placebo on every metric, every test (sections 9-10).
+  Real information exists at 13:30 UTC — but no breakout wrapper tested
+  converts it to net-positive after the 0.13% cost.
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
