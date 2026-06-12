@@ -139,6 +139,30 @@ gross at every level (including placebo) is generic post-touch mean-reversion
 noise, and fees consume all of it. POC/VAH/VAL carry no information beyond being
 a price inside yesterday's range.
 
+## 9. Opening Range Breakout (9:30 ET) — premise false, faint signal, fees kill it
+Claim (trading-video): the 9:30-9:35 ET candle is the session's highest-volume
+bar; trade its range break at 3:1. Tested with `orb_study.py` (5m, ~18 days x 10
+coins, stop-first walk-forward, placebo anchors at arbitrary UTC times):
+
+| anchor | n | target% | mean R | net ret/trade |
+|--------|--:|--------:|-------:|--------------:|
+| REAL 13:30 UTC (9:30 ET) | 170 | 31.2% | +0.30 | **−0.08%** |
+| placebo 02:30 UTC | 170 | 24.1% | +0.01 | −0.10% |
+| placebo 06:30 UTC | 170 | 19.4% | −0.21 | −0.28% |
+
+- **Premise check failed 0/170:** the 9:30 ET bar was NEVER the day's top-volume
+  5m bar in crypto. That's an equities fact ported to a 24/7 market where it's false.
+- **There IS a faint anchor effect:** the US-open range beat both placebos
+  (31% vs 19-24% target rate, ~2 s.e.) — US-open flow carries *some* directional
+  information in crypto. Worth remembering as a session-effect lead.
+- **Economics fail anyway:** 5m ranges are so small that the 0.13% round-trip cost
+  exceeds the gross edge — net negative even at the real anchor. Same fee-vs-noise
+  wall as the live 5m experiment (section: live run, fees = 84% of losses).
+
+(The video's 1m FVG/retest/engulfing layers are untestable — Hyperliquid serves
+~4 days of 1m history — but they only filter entries; the range break itself must
+carry the edge, and after costs it doesn't.)
+
 ## Bottom line
 There is **no validated trading edge** in any strategy/coin tested here. Do not go
 live. The hardening work was necessary but it protects a strategy that doesn't yet
