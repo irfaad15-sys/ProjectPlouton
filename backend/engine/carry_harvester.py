@@ -50,10 +50,20 @@ class CarryHarvester:
         is_open = pos is not None and str(pos.get("status")) == "OPEN"
 
         if is_open:
+            # Heal rows written before the naive-UTC fix: DuckDB stored tz-aware
+            # datetimes as LOCAL time, so they read back ahead of UTC by exactly
+            # the machine's offset. Detect (timestamp in the future) and undo it.
+            local_off = datetime.now().astimezone().utcoffset() or timedelta(0)
+
+            def as_utc(ts):
+                ts = ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else ts
+                return ts - local_off if ts > now + timedelta(minutes=1) else ts
+
+            pos["opened_at"] = as_utc(pos["opened_at"])
+
             # 1. Accrue funding since last accrual at the current hourly rate.
             rate = self.fetcher.fetch_funding_rate(coin)
-            last = pos.get("last_accrual") or pos.get("opened_at")
-            last = last.replace(tzinfo=timezone.utc) if last.tzinfo is None else last
+            last = as_utc(pos.get("last_accrual") or pos.get("opened_at"))
             hours = max((now - last).total_seconds() / 3600.0, 0.0)
             accrued = rate * float(pos["notional"]) * hours  # short receives positive funding
             pos["funding_collected"] = float(pos["funding_collected"]) + accrued

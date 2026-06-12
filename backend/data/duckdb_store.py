@@ -1043,10 +1043,17 @@ class DuckDBStore:
         return df.to_dict("records") if not df.empty else []
 
     def upsert_carry_position(self, row: dict) -> None:
+        from datetime import datetime, timezone
         cols = ["coin", "status", "notional", "qty", "entry_price", "opened_at",
                 "closed_at", "funding_collected", "fees_paid", "last_accrual",
                 "last_funding_hr", "exit_reason"]
-        vals = [row.get(c) for c in cols]
+        # Bind naive-UTC datetimes: DuckDB converts tz-aware values to LOCAL time
+        # in a naive TIMESTAMP column, which skews reads by the machine's offset.
+        vals = [
+            v.astimezone(timezone.utc).replace(tzinfo=None)
+            if isinstance(v, datetime) and v.tzinfo is not None else v
+            for v in (row.get(c) for c in cols)
+        ]
         with self._lock:
             self.conn.execute(
                 f"INSERT OR REPLACE INTO carry_positions ({', '.join(cols)}) "
